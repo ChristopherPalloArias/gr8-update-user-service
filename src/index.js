@@ -48,7 +48,6 @@ async function startService() {
   });
 
   const dynamoDB = new AWS.DynamoDB.DocumentClient();
-
   const app = express();
   const port = 8084;
 
@@ -88,59 +87,19 @@ async function startService() {
   const publishEvent = async (eventType, data) => {
     const event = { eventType, data };
     try {
-      channel.sendToQueue('user-events', Buffer.from(JSON.stringify(event)), { persistent: true });
-      console.log('Event published to RabbitMQ:', event);
+      if (channel) {
+        channel.sendToQueue('user-events', Buffer.from(JSON.stringify(event)), { persistent: true });
+        console.log('Event published to RabbitMQ:', event);
+      } else {
+        console.error('Channel is not initialized');
+      }
     } catch (error) {
       console.error('Error publishing event to RabbitMQ:', error);
     }
   };
 
-  connectRabbitMQ();
+  await connectRabbitMQ();
 
-  /**
-   * @swagger
-   * /users/{username}:
-   *   put:
-   *     summary: Update an existing user
-   *     description: Update an existing user by username
-   *     parameters:
-   *       - in: path
-   *         name: username
-   *         required: true
-   *         description: Username of the user to update
-   *         schema:
-   *           type: string
-   *     requestBody:
-   *       description: User object that needs to be updated
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               firstName:
-   *                 type: string
-   *               lastName:
-   *                 type: string
-   *               email:
-   *                 type: string
-   *               password:
-   *                 type: string
-   *     responses:
-   *       200:
-   *         description: User updated
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 message:
-   *                   type: string
-   *       404:
-   *         description: User not found
-   *       500:
-   *         description: Error updating user
-   */
   app.put('/users/:username', async (req, res) => {
     const { username } = req.params;
     const { firstName, lastName, email, password } = req.body;
@@ -180,7 +139,6 @@ async function startService() {
     }
   });
 
-  // Root route to check if the server is running
   app.get('/', (req, res) => {
     res.send('Update User Service Running');
   });
