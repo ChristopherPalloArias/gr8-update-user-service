@@ -1,10 +1,15 @@
-import express from 'express';
-import cors from 'cors';
-import bcrypt from 'bcrypt';
-import amqp from 'amqplib';
-import swaggerUi from 'swagger-ui-express';
-import swaggerJsDoc from 'swagger-jsdoc';
-import AWS from 'aws-sdk';
+const AWS = require('aws-sdk');
+const express = require('express');
+const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsDoc = require('swagger-jsdoc');
+const amqp = require('amqplib');
+const bcrypt = require('bcrypt');
+const app = express();
+const port = 8084;
+
+app.use(cors());
+app.use(express.json());
 
 // AWS region and Lambda function configuration
 const region = "us-east-2";
@@ -31,17 +36,6 @@ async function getSecretFromLambda() {
   }
 }
 
-// Function to publish events to RabbitMQ
-async function publishEvent(channel, eventType, data) {
-  const event = { eventType, data };
-  try {
-    channel.sendToQueue('user-events', Buffer.from(JSON.stringify(event)), { persistent: true });
-    console.log('Event published to RabbitMQ:', event);
-  } catch (error) {
-    console.error('Error publishing event to RabbitMQ:', error);
-  }
-}
-
 // Function to start the service
 async function startService() {
   let secrets;
@@ -52,13 +46,6 @@ async function startService() {
     return;
   }
 
-  const app = express();
-  const port = 8084;
-
-  app.use(cors());
-  app.use(express.json());
-
-  // Configure AWS DynamoDB
   AWS.config.update({
     region: region,
     accessKeyId: secrets.AWS_ACCESS_KEY_ID,
@@ -70,19 +57,20 @@ async function startService() {
   // Swagger setup
   const swaggerOptions = {
     swaggerDefinition: {
+      openapi: '3.0.0',
       info: {
         title: 'Update User Service API',
         version: '1.0.0',
-        description: 'API for updating users',
-      },
+        description: 'API for updating users'
+      }
     },
-    apis: ['./src/index.js'],
+    apis: ['./update-user-service.js']
   };
 
-  const swaggerDocs = swaggerJsDoc(swaggerOptions);
+  const swaggerDocs = swaggerOptions;
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
-  // Connect to RabbitMQ
+  // RabbitMQ setup
   let channel;
   async function connectRabbitMQ() {
     try {
@@ -90,13 +78,23 @@ async function startService() {
       channel = await connection.createChannel();
       await channel.assertQueue('user-events', { durable: true });
       console.log('Connected to RabbitMQ');
-      return channel;
     } catch (error) {
       console.error('Error connecting to RabbitMQ:', error);
     }
   }
 
-  channel = await connectRabbitMQ();
+  // Publish event to RabbitMQ
+  const publishEvent = async (eventType, data) => {
+    const event = { eventType, data };
+    try {
+      channel.sendToQueue('user-events', Buffer.from(JSON.stringify(event)), { persistent: true });
+      console.log('Event published to RabbitMQ:', event);
+    } catch (error) {
+      console.error('Error publishing event to RabbitMQ:', error);
+    }
+  };
+
+  connectRabbitMQ();
 
   /**
    * @swagger
@@ -156,7 +154,7 @@ async function startService() {
     };
 
     const params = {
-      TableName: 'UsersUpdate_gr8',
+      TableName: 'Users_gr8',
       Key: { username },
       UpdateExpression: 'set firstName = :fn, lastName = :ln, email = :em, #pw = :pw',
       ExpressionAttributeValues: {
@@ -173,8 +171,7 @@ async function startService() {
 
     try {
       const result = await dynamoDB.update(params).promise();
-      // Publish user updated event to RabbitMQ
-      await publishEvent(channel, 'UserUpdated', updatedUser);
+      publishEvent('UserUpdated', updatedUser);
       res.send({ message: 'User updated', result });
     } catch (error) {
       console.error('Error updating user:', error);
