@@ -1,15 +1,10 @@
-const AWS = require('aws-sdk');
-const express = require('express');
-const cors = require('cors');
-const swaggerUi = require('swagger-ui-express');
-const swaggerJsDoc = require('swagger-jsdoc');
-const amqp = require('amqplib');
-const bcrypt = require('bcrypt');
-const app = express();
-const port = 8084;
-
-app.use(cors());
-app.use(express.json());
+import express from 'express';
+import cors from 'cors';
+import bcrypt from 'bcrypt';
+import amqp from 'amqplib';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsDoc from 'swagger-jsdoc';
+import AWS from 'aws-sdk';
 
 // AWS region and Lambda function configuration
 const region = "us-east-2";
@@ -54,6 +49,12 @@ async function startService() {
 
   const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
+  const app = express();
+  const port = 8084;
+
+  app.use(cors());
+  app.use(express.json());
+
   // Swagger setup
   const swaggerOptions = {
     swaggerDefinition: {
@@ -64,10 +65,10 @@ async function startService() {
         description: 'API for updating users'
       }
     },
-    apis: ['./update-user-service.js']
+    apis: ['./src/index.js']
   };
 
-  const swaggerDocs = swaggerOptions;
+  const swaggerDocs = swaggerJsDoc(swaggerOptions);
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
   // RabbitMQ setup
