@@ -1,4 +1,4 @@
-# List User Service
+# Update User Service
 
 This is the microservice for update User in the +Kotas App.
 
@@ -48,13 +48,12 @@ Before starting the application you must change the database credentials in the 
 Repository: [https://github.com/ChristopherPalloArias/kotas-frontend](https://github.com/ChristopherPalloArias/kotas-frontend.git)
 
 ### Evidence
-![image](https://github.com/user-attachments/assets/4a0818b5-19f1-4f30-b296-ca4ddf8c8590)
+![image](https://github.com/user-attachments/assets/e746ffc3-f13a-4172-ba96-7b188e72350a)
 
 ## Usage
 ### Verify Server Functionality
+![image](https://github.com/user-attachments/assets/19544ba5-9c9a-46b4-a3b2-baceaae67738)
 
-Method: PUT  
 URL: `[http://localhost:8084/](http://gr8-load-balancer-users-1719093065.us-east-2.elb.amazonaws.com:8084/)`  
 Description: This route displays a message to verify that the server is running.
 ![image](https://github.com/user-attachments/assets/72b846a2-b8bc-40e0-a8ad-e5b0b84118a6)
-
